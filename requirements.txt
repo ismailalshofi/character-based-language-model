@@ -1,0 +1,5 @@
+tensorflow>=2.13,<2.16
+pandas
+numpy
+matplotlib
+huggingface_hub
