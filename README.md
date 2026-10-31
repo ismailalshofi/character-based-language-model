@@ -1,6 +1,8 @@
 # Character-Based Language Model
 
-A character-level text generation model built with TensorFlow and a GRU-based recurrent neural network. Trained on ~2,700 business news articles to generate text one character at a time.
+A character-level text generation model built with TensorFlow and a GRU-based recurrent neural network. Trained on ~2,700 business and sports news articles to generate text one character at a time.
+
+**Try it:** [live demo on Hugging Face Spaces](https://huggingface.co/spaces/Ismail99/char-news-writer) · **Model:** [Ismail99/char-based-language-model](https://huggingface.co/Ismail99/char-based-language-model)
 
 ## Model Architecture
 
@@ -18,7 +20,7 @@ A character-level text generation model built with TensorFlow and a GRU-based re
 
 | Detail | Value |
 |--------|-------|
-| Source | 2,692 business news articles |
+| Source | 2,692 news articles (1,284 business, 1,408 sports) |
 | Total characters (after cleaning) | ~4.5M |
 | Vocabulary size | 106 unique characters |
 | Sequence length | 100 characters |
@@ -67,7 +69,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-Open `char_based_lm.ipynb` in Jupyter or VS Code and run all cells. The notebook will:
+Open `Char_Based_LM.ipynb` in Jupyter or VS Code and run all cells. The notebook will:
 
 1. Load and preprocess the article data
 2. Build a character-level vocabulary
@@ -79,14 +81,21 @@ Open `char_based_lm.ipynb` in Jupyter or VS Code and run all cells. The notebook
 
 ```
 char-based-language-model/
-├── char_based_lm.ipynb    # Training and generation notebook
+├── Char_Based_LM.ipynb    # Training and generation notebook
 ├── requirements.txt       # Python dependencies
 ├── .gitignore
 ├── README.md
 ├── data/
 │   └── Articles.csv       # Training dataset
+├── space/                 # The Gradio demo on Hugging Face Spaces
+│   ├── app.py
+│   ├── requirements.txt
+│   └── README.md          # Space settings
 └── saved_model/           # Generated after training (gitignored)
+    ├── README.md          # The Hugging Face model card (tracked)
     ├── model.keras
     ├── vocab.json
     └── config.json
 ```
+
+To run the demo locally: `pip install gradio -r space/requirements.txt`, then `python space/app.py`.
