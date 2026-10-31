@@ -87,9 +87,9 @@ char-based-language-model/
 ├── README.md
 ├── data/
 │   └── Articles.csv       # Training dataset
-├── space/                 # The Gradio demo on Hugging Face Spaces
-│   ├── app.py
-│   ├── requirements.txt
+├── space/                 # The browser demo on Hugging Face Spaces
+│   ├── index.html         # The GRU in plain JavaScript, and the page
+│   ├── export_weights.py  # Model -> weights.bin + model.json, checked against TensorFlow
 │   └── README.md          # Space settings
 └── saved_model/           # Generated after training (gitignored)
     ├── README.md          # The Hugging Face model card (tracked)
@@ -98,4 +98,15 @@ char-based-language-model/
     └── config.json
 ```
 
-To run the demo locally: `pip install gradio -r space/requirements.txt`, then `python space/app.py`.
+### The browser demo
+
+The [Space](https://huggingface.co/spaces/Ismail99/char-news-writer) has no server. `export_weights.py` writes the trained weights to one 4 MB binary file, and `index.html` runs the GRU on them in plain JavaScript, about 1.4 ms per character. The export script re-implements the same maths in NumPy and checks it against TensorFlow, and the page checks itself again on load (max logit difference ~1e-5).
+
+To run it locally:
+
+```bash
+python space/export_weights.py
+python -m http.server -d space 8000
+```
+
+Then open http://localhost:8000.

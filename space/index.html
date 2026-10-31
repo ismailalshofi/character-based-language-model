@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Character-level News Writer</title>
+  <style>
+    :root {
+      --bg: #f7f7f5; --panel: #ffffff; --text: #17181c; --muted: #6a6d74; --border: #e2e1dc;
+      --accent: #2f6fed; --accent-text: #ffffff; --soft: #eef3fd;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111317; --panel: #191c21; --text: #e8e9ec; --muted: #9399a3; --border: #2a2e36;
+        --accent: #5b8cff; --accent-text: #0b0d10; --soft: #1d2533;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 860px; margin: 0 auto; padding: 40px 16px 56px; }
+    h1 { font-size: 30px; line-height: 1.2; margin: 0 0 12px; letter-spacing: -0.01em; }
+    p { margin: 0 0 12px; color: var(--muted); }
+    p strong { color: var(--text); }
+    .links { font-size: 14px; margin-bottom: 28px; }
+    a { color: var(--accent); }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    input[type=text] { width: 100%; font: inherit; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .range { display: flex; align-items: center; gap: 10px; }
+    .range input { flex: 1; accent-color: var(--accent); }
+    .range output { min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+    .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .examples button { font: inherit; font-size: 14px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+    .actions { display: flex; gap: 10px; margin-top: 20px; }
+    .actions button { font: inherit; font-weight: 600; border: none; border-radius: 10px; padding: 10px 22px; cursor: pointer; background: var(--accent); color: var(--accent-text); }
+    .actions button:disabled { opacity: .5; cursor: default; }
+    .actions button.secondary { background: var(--soft); color: var(--accent); }
+    #output { margin-top: 20px; min-height: 220px; white-space: pre-wrap; font: 16px/1.65 ui-serif, Georgia, serif; }
+    #output .seed { font-weight: 700; }
+    #output .cursor { display: inline-block; width: 8px; height: 1.1em; background: var(--accent); vertical-align: text-bottom; animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .status { font-size: 13px; color: var(--muted); margin-top: 10px; min-height: 1.4em; }
+    @media (max-width: 560px) { .row { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Character-level News Writer</h1>
+  <p>A small GRU (1M parameters) that writes <strong>one character at a time</strong>. It never saw a word list: it learned spelling, spacing and punctuation from ~2,700 Pakistani business and sports news articles.</p>
+  <p>The model runs <strong>in your browser</strong>: no server, nothing sent anywhere. Give it the start of a dateline or a sentence, then press Write.</p>
+  <p class="links"><a href="https://huggingface.co/Ismail99/char-based-language-model">Model card</a> · <a href="https://github.com/ismailalshofi/character-based-language-model">Code on GitHub</a></p>
+
+  <div class="panel">
+    <label for="seed">Start with</label>
+    <input type="text" id="seed" value="KARACHI:" maxlength="200" autocomplete="off">
+
+    <div class="row">
+      <div>
+        <label for="length">Characters to write</label>
+        <div class="range"><input type="range" id="length" min="50" max="800" step="10" value="300"><output id="length-out">300</output></div>
+      </div>
+      <div>
+        <label for="temperature">Temperature: low is safe and repetitive, high invents words</label>
+        <div class="range"><input type="range" id="temperature" min="0.2" max="1.5" step="0.1" value="0.8"><output id="temperature-out">0.8</output></div>
+      </div>
+    </div>
+
+    <div class="examples" id="examples"></div>
+
+    <div class="actions">
+      <button id="write" disabled>Loading model…</button>
+      <button id="stop" class="secondary" hidden>Stop</button>
+    </div>
+    <div id="output"></div>
+    <div class="status" id="status"></div>
+  </div>
+</main>
+
+<script>
+// A Keras GRU (reset_after=True, gates z, r, h) followed by a dense layer, in plain JavaScript.
+// The weights come from export_weights.py, which checks the same maths against TensorFlow.
+let model = null;
+let running = false;
+
+async function loadModel() {
+  const [meta, buffer] = await Promise.all([
+    fetch("model.json").then((r) => r.json()),
+    fetch("weights.bin").then((r) => r.arrayBuffer()),
+  ]);
+  const all = new Float32Array(buffer);
+  const w = {};
+  for (const [name, { offset, shape }] of Object.entries(meta.weights)) {
+    w[name] = { data: all.subarray(offset, offset + shape.reduce((a, b) => a * b, 1)), shape };
+  }
+  const index = new Map(meta.chars.map((c, i) => [c, i]));
+  return { w, chars: meta.chars, index, units: w.recurrent_kernel.shape[0], check: meta.check };
+}
+
+// out[j] = sum_i vec[i] * matrix[i][j] + bias[j]
+function matvec(vec, matrix, cols, bias, out) {
+  out.set(bias);
+  for (let i = 0; i < vec.length; i++) {
+    const v = vec[i];
+    if (v === 0) continue;
+    const row = i * cols;
+    for (let j = 0; j < cols; j++) out[j] += v * matrix[row + j];
+  }
+  return out;
+}
+
+const sigmoid = (x) => 1 / (1 + Math.exp(-x));
+
+function makeState(m) {
+  const n = m.units;
+  return {
+    h: new Float32Array(n),
+    xg: new Float32Array(3 * n),
+    hg: new Float32Array(3 * n),
+    logits: new Float32Array(m.chars.length),
+  };
+}
+
+// Feed one character id, update the hidden state, return the logits for the next character
+function step(m, s, id) {
+  const { w, units: n } = m;
+  const emb = w.embedding.shape[1];
+  const x = w.embedding.data.subarray(id * emb, (id + 1) * emb);
+  const bias = w.bias.data;
+  matvec(x, w.kernel.data, 3 * n, bias.subarray(0, 3 * n), s.xg);
+  matvec(s.h, w.recurrent_kernel.data, 3 * n, bias.subarray(3 * n, 6 * n), s.hg);
+  for (let j = 0; j < n; j++) {
+    const z = sigmoid(s.xg[j] + s.hg[j]);
+    const r = sigmoid(s.xg[n + j] + s.hg[n + j]);
+    const hh = Math.tanh(s.xg[2 * n + j] + r * s.hg[2 * n + j]);
+    s.h[j] = z * s.h[j] + (1 - z) * hh;
+  }
+  return matvec(s.h, w.dense_kernel.data, m.chars.length, w.dense_bias.data, s.logits);
+}
+
+function sample(logits, temperature) {
+  // Index 0 is [UNK]: never pick it
+  let max = -Infinity;
+  for (let i = 1; i < logits.length; i++) max = Math.max(max, logits[i] / temperature);
+  const probs = new Float64Array(logits.length);
+  let sum = 0;
+  for (let i = 1; i < logits.length; i++) sum += probs[i] = Math.exp(logits[i] / temperature - max);
+  let r = Math.random() * sum;
+  for (let i = 1; i < logits.length; i++) if ((r -= probs[i]) <= 0) return i;
+  return logits.length - 1;
+}
+
+function selfCheck(m) {
+  const s = makeState(m);
+  let logits;
+  for (const c of m.check.seed) logits = step(m, s, m.index.get(c) ?? 0);
+  let error = 0;
+  for (let i = 0; i < logits.length; i++) error = Math.max(error, Math.abs(logits[i] - m.check.logits[i]));
+  return error;
+}
+
+const $ = (id) => document.getElementById(id);
+
+async function write() {
+  if (!model || running) return;
+  running = true;
+  $("write").disabled = true;
+  $("stop").hidden = false;
+
+  const seed = $("seed").value || "\n";
+  const length = Number($("length").value);
+  const temperature = Number($("temperature").value);
+  const s = makeState(model);
+
+  const output = $("output");
+  output.innerHTML = "";
+  const seedSpan = document.createElement("span");
+  seedSpan.className = "seed";
+  seedSpan.textContent = seed;
+  const text = document.createTextNode("");
+  const cursor = document.createElement("span");
+  cursor.className = "cursor";
+  output.append(seedSpan, text, cursor);
+
+  const started = performance.now();
+  let logits;
+  for (const c of seed) logits = step(model, s, model.index.get(c) ?? 0);
+
+  let written = 0;
+  while (running && written < length) {
+    // A few characters per frame keeps the typing visible without being slow
+    for (let k = 0; k < 3 && written < length; k++, written++) {
+      const id = sample(logits, temperature);
+      text.data += model.chars[id];
+      logits = step(model, s, id);
+    }
+    await new Promise(requestAnimationFrame);
+  }
+
+  cursor.remove();
+  const ms = performance.now() - started;
+  $("status").textContent = `${written} characters in ${(ms / 1000).toFixed(1)} s, on your device.`;
+  running = false;
+  $("write").disabled = false;
+  $("stop").hidden = true;
+}
+
+for (const id of ["length", "temperature"]) {
+  $(id).addEventListener("input", () => ($(`${id}-out`).textContent = $(id).value));
+}
+const EXAMPLES = [["KARACHI:", 0.8], ["Oil prices", 0.8], ["HONG KONG:", 0.5], ["The match", 1.1], ["LAHORE: Pakistan", 0.7]];
+for (const [seed, temperature] of EXAMPLES) {
+  const b = document.createElement("button");
+  b.textContent = seed;
+  b.onclick = () => {
+    $("seed").value = seed;
+    $("temperature").value = temperature;
+    $("temperature-out").textContent = temperature;
+    write();
+  };
+  $("examples").append(b);
+}
+$("write").onclick = write;
+$("stop").onclick = () => (running = false);
+$("seed").addEventListener("keydown", (e) => e.key === "Enter" && write());
+
+loadModel()
+  .then((m) => {
+    model = m;
+    window.__selfCheckError = selfCheck(m);
+    $("write").disabled = false;
+    $("write").textContent = "Write";
+  })
+  .catch((err) => {
+    $("write").textContent = "Couldn't load the model";
+    $("status").textContent = err.message;
+  });
+</script>
+</body>
+</html>

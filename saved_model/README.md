@@ -17,7 +17,7 @@ tags:
 
 A small GRU language model (1M parameters) that writes **one character at a time**. It was never given a word list: it learned spelling, spacing, punctuation and the shape of a news story from ~2,700 Pakistani business and sports news articles.
 
-**Try it in the browser:** [Character-level News Writer Space](https://huggingface.co/spaces/Ismail99/char-news-writer) · **Code:** [GitHub](https://github.com/ismailalshofi/character-based-language-model)
+**Try it:** [Character-level News Writer](https://huggingface.co/spaces/Ismail99/char-news-writer), a Space where the model runs in your browser (the GRU re-implemented in plain JavaScript, checked against TensorFlow) · **Code:** [GitHub](https://github.com/ismailalshofi/character-based-language-model)
 
 ## Samples
 
