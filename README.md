@@ -2,7 +2,7 @@
 
 A character-level text generation model built with TensorFlow and a GRU-based recurrent neural network. Trained on ~2,700 business and sports news articles to generate text one character at a time.
 
-**Try it:** [live demo on Hugging Face Spaces](https://huggingface.co/spaces/Ismail99/char-news-writer) · **Model:** [Ismail99/char-based-language-model](https://huggingface.co/Ismail99/char-based-language-model)
+**Try it:** [live demo on Hugging Face Spaces](https://huggingface.co/spaces/Ismailalshofi/char-news-writer) · **Model:** [Ismailalshofi/char-based-language-model](https://huggingface.co/Ismailalshofi/char-based-language-model)
 
 ## Model Architecture
 
@@ -100,7 +100,7 @@ char-based-language-model/
 
 ### The browser demo
 
-The [Space](https://huggingface.co/spaces/Ismail99/char-news-writer) has no server. `export_weights.py` writes the trained weights to one 4 MB binary file, and `index.html` runs the GRU on them in plain JavaScript, about 1.4 ms per character. The export script re-implements the same maths in NumPy and checks it against TensorFlow, and the page checks itself again on load (max logit difference ~1e-5).
+The [Space](https://huggingface.co/spaces/Ismailalshofi/char-news-writer) has no server. `export_weights.py` writes the trained weights to one 4 MB binary file, and `index.html` runs the GRU on them in plain JavaScript, about 1.4 ms per character. The export script re-implements the same maths in NumPy and checks it against TensorFlow, and the page checks itself again on load (max logit difference ~1e-5).
 
 To run it locally:
 

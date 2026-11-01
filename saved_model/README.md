@@ -17,7 +17,7 @@ tags:
 
 A small GRU language model (1M parameters) that writes **one character at a time**. It was never given a word list: it learned spelling, spacing, punctuation and the shape of a news story from ~2,700 Pakistani business and sports news articles.
 
-**Try it:** [Character-level News Writer](https://huggingface.co/spaces/Ismail99/char-news-writer), a Space where the model runs in your browser (the GRU re-implemented in plain JavaScript, checked against TensorFlow) · **Code:** [GitHub](https://github.com/ismailalshofi/character-based-language-model)
+**Try it:** [Character-level News Writer](https://huggingface.co/spaces/Ismailalshofi/char-news-writer), a Space where the model runs in your browser (the GRU re-implemented in plain JavaScript, checked against TensorFlow) · **Code:** [GitHub](https://github.com/ismailalshofi/character-based-language-model)
 
 ## Samples
 
@@ -62,7 +62,7 @@ import json
 import tensorflow as tf
 from huggingface_hub import hf_hub_download
 
-REPO_ID = "Ismail99/char-based-language-model"
+REPO_ID = "Ismailalshofi/char-based-language-model"
 
 
 class CharModel(tf.keras.Model):
